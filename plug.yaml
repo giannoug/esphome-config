@@ -1,0 +1,165 @@
+substitutions:
+  device: plug
+  name: Plug
+  voltage_divider: 780
+
+esphome:
+  name: ${device}
+  name_add_mac_suffix: true
+  platform: ESP8266
+  board: esp8285
+  includes:
+    - components/total_daily_cost.h
+  on_boot:
+    then:
+      - light.turn_on: blue_led
+
+<<: !include common/common.yaml
+
+text_sensor:
+  - !include common/text_sensor/version.yaml
+  - !include common/text_sensor/wifi-info.yaml
+
+light:
+  - platform: status_led
+    name: Blue LED
+    id: blue_led
+    pin:
+      number: GPIO13
+      inverted: true
+
+binary_sensor:
+  - platform: gpio
+    name: Button
+    pin:
+      number: GPIO3
+      mode: INPUT_PULLUP
+      inverted: true
+    on_click:
+      min_length: 4s
+      max_length: 6s
+      then:
+        - switch.turn_on: reset
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.toggle: relay
+
+sensor:
+  - !include common/sensor/wifi-signal.yaml
+  - !include common/sensor/uptime.yaml
+  - platform: hlw8012
+    sel_pin:
+      number: GPIO12
+      inverted: True
+    cf_pin: GPIO4
+    cf1_pin: GPIO5
+    voltage_divider: ${voltage_divider}
+    current:
+      name: Socket current
+      filters:
+        - calibrate_linear:
+            - 0.0000 -> 0.0110 # Relay off no load
+            - 0.0097 -> 0.0260 # Relay on no load
+            - 0.9270 -> 0.7570
+            - 2.0133 -> 1.6330
+            - 2.9307 -> 2.3750
+            - 5.4848 -> 4.4210
+            - 8.4308 -> 6.8330
+            - 9.9171 -> 7.9830
+        - lambda: if (x < 0.0260) return 0; else return (x - 0.0260); # Normalize for plug load
+    power:
+      name: Socket power
+      id: socket_power
+      filters:
+        - calibrate_linear:
+            - 0.0000 -> 0.5900 # Relay off no load
+            - 0.0000 -> 1.5600 # Relay on no load
+            - 198.5129 -> 87.8300
+            - 434.2469 -> 189.5000
+            - 628.6241 -> 273.9000
+            - 1067.0067 -> 460.1000
+            - 1619.8098 -> 699.2000
+            - 2043.0282 -> 885.0000
+        - lambda: if (x < 1.5600) return 0; else return (x - 1.5600); # Normalize for plug load
+    voltage:
+      name: Socket voltage
+    change_mode_every: 1
+    update_interval: 5s
+  - platform: total_daily_energy
+    name: Socket total daily energy
+    id: socket_total_daily_energy
+    power_id: socket_power
+    filters:
+      - multiply: 0.001
+    unit_of_measurement: kWh
+  - platform: template
+    name: kWh price cents
+    id: kwh_price_cents
+    accuracy_decimals: 0
+  - platform: custom
+    lambda: |-
+      auto sensor = new TotalDailyCost();
+      App.register_component(sensor);
+      return {sensor};
+    sensors:
+      name: Socket total daily cost
+      id: socket_total_daily_cost
+      accuracy_decimals: 2
+
+switch:
+  - !include common/switch/restart.yaml
+  - platform: gpio
+    name: Relay
+    id: relay
+    pin: GPIO14
+    restore_mode: RESTORE_DEFAULT_ON
+
+# https://www.dei.gr/el/oikiakoi-pelates/timologia/oikiako-timologio-me-xronoxrewsi-oikiako-nuxterino/wrario
+script:
+  - id: update_kwh_price_cents
+    then:
+      - lambda: |-
+          auto time = id(sntp_time).now();
+          auto month = time.month;
+          auto hour = time.hour;
+
+          if (time.is_valid()) {
+            auto time_text = id(sntp_time).now().strftime("%Y-%m-%d %H:%M");
+            ESP_LOGD("kwh_price_cents_cron", "Checking for kWh price change, hour=%d", hour);
+
+            if (month >= 11 || month <= 4) {
+              ESP_LOGD("kwh_price_cents_cron", "We are in the winter period (1 Νοεμβρίου έως 30 Απριλίου)");
+
+              if ((hour >= 2 && hour <= 8) || (hour >= 15 && hour <= 17)) {
+                ESP_LOGD("kwh_price_cents_cron", "Also between applicable hours (02:00-08:00 and 15:00-17:00)");
+                id(kwh_price_cents).publish_state(7);
+              } else {
+                ESP_LOGD("kwh_price_cents_cron", "Outside applicable hours (02:00-08:00 and 15:00-17:00)");
+                id(kwh_price_cents).publish_state(11);
+              }
+            } else {
+              ESP_LOGD("kwh_price_cents_cron", "We are in the summer period (1 Μαΐου έως 31 Οκτωβρίου)");
+
+              if (hour >= 23 || hour <= 7) {
+                ESP_LOGD("kwh_price_cents_cron", "Also between applicable hours (23:00-07:00)");
+                id(kwh_price_cents).publish_state(7);
+              } else {
+                ESP_LOGD("kwh_price_cents_cron", "Outside applicable hours (23:00-07:00)");
+                id(kwh_price_cents).publish_state(11);
+              }
+            }
+          }
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Athens
+    on_time_sync:
+      then:
+        - script.execute: update_kwh_price_cents
+    on_time:
+      - cron: 0 0 * * * *
+        then:
+          - script.execute: update_kwh_price_cents

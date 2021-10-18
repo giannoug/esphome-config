@@ -1,0 +1,83 @@
+substitutions:
+  device: mother
+  name: Mother
+
+esphome:
+  name: ${device}
+  platform: ESP32
+  board: esp32doit-devkit-v1
+
+<<: !include common/common.yaml
+
+text_sensor:
+  - !include common/text_sensor/version.yaml
+  - !include common/text_sensor/wifi-info.yaml
+
+switch:
+  - !include common/switch/restart.yaml
+
+esp32_ble_tracker:
+
+sensor:
+  - !include common/sensor/wifi-signal.yaml
+  - !include common/sensor/uptime.yaml
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_room_1_mac
+    temperature:
+      name: "Room #1 temperature"
+    humidity:
+      name: "Room #1 humidity"
+    battery_level:
+      name: "Room #1 battery level"
+    battery_voltage:
+      name: "Room #1 battery voltage"
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_room_2_mac
+    temperature:
+      name: "Room #2 temperature"
+    humidity:
+      name: "Room #2 humidity"
+    battery_level:
+      name: "Room #2 battery level"
+    battery_voltage:
+      name: "Room #2 battery voltage"
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_room_3_mac
+    temperature:
+      name: "Room #3 temperature"
+    humidity:
+      name: "Room #3 humidity"
+    battery_level:
+      name: "Room #3 battery level"
+    battery_voltage:
+      name: "Room #3 battery voltage"
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_living_room_mac
+    temperature:
+      name: "Living room temperature"
+    humidity:
+      name: "Living room humidity"
+    battery_level:
+      name: "Living room battery level"
+    battery_voltage:
+      name: "Living room battery voltage"
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_hallway_mac
+    temperature:
+      name: "Hallway temperature"
+    humidity:
+      name: "Hallway humidity"
+    battery_level:
+      name: "Hallway battery level"
+    battery_voltage:
+      name: "Hallway battery voltage"
+  - platform: pvvx_mithermometer
+    mac_address: !secret mother_bathroom_mac
+    temperature:
+      name: "Bathroom temperature"
+    humidity:
+      name: "Bathroom humidity"
+    battery_level:
+      name: "Bathroom battery level"
+    battery_voltage:
+      name: "Bathroom battery voltage"
