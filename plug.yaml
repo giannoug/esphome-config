@@ -1,7 +1,9 @@
 substitutions:
   device: plug
   name: Plug
-  voltage_divider: 780
+  voltage_divider: "780"
+  kwh_price_cents_normal_rate: "11"
+  kwh_price_cents_night_rate: "7"
 
 esphome:
   name: ${device}
@@ -12,7 +14,7 @@ esphome:
     - components/total_daily_cost.h
   on_boot:
     then:
-      - light.turn_on: blue_led
+      - light.turn_on: blue_led # status_led turns off after (successful) boot, so we turn it on
 
 <<: !include common/common.yaml
 
@@ -39,6 +41,7 @@ binary_sensor:
       min_length: 4s
       max_length: 6s
       then:
+        - light.turn_off: blue_led # turn off status_led (we turned it on on boot) so we know the device reboots
         - switch.turn_on: reset
     on_double_click:
       min_length: 50ms
@@ -116,38 +119,42 @@ switch:
     pin: GPIO14
     restore_mode: RESTORE_DEFAULT_ON
 
-# https://www.dei.gr/el/oikiakoi-pelates/timologia/oikiako-timologio-me-xronoxrewsi-oikiako-nuxterino/wrario
+# Calculate the price of kWh per hour
+# Based on info from https://www.dei.gr/el/oikiakoi-pelates/timologia/oikiako-timologio-me-xronoxrewsi-oikiako-nuxterino/wrario
+# Schedule as of 22/10/2021 is:
+# * Winter period -> November 1st to April 30th from 02:00 to 08:00 and 15:00 to 17:00
+# * Summer period -> May 1st to October 31st from 23:00 to 07:00
 script:
   - id: update_kwh_price_cents
     then:
       - lambda: |-
-          auto time = id(sntp_time).now();
-          auto month = time.month;
-          auto hour = time.hour;
+          const auto TAG = "kwh_price_cents_cron";
+          const auto time = id(sntp_time).now();
+          const auto month = time.month;
+          const auto hour = time.hour;
 
           if (time.is_valid()) {
-            auto time_text = id(sntp_time).now().strftime("%Y-%m-%d %H:%M");
-            ESP_LOGD("kwh_price_cents_cron", "Checking for kWh price change, hour=%d", hour);
+            ESP_LOGD(TAG, "Checking for kWh price change, hour=%d", hour);
 
             if (month >= 11 || month <= 4) {
-              ESP_LOGD("kwh_price_cents_cron", "We are in the winter period (1 Νοεμβρίου έως 30 Απριλίου)");
+              ESP_LOGD(TAG, "We are in the winter period (November 1st to April 30th)");
 
               if ((hour >= 2 && hour <= 8) || (hour >= 15 && hour <= 17)) {
-                ESP_LOGD("kwh_price_cents_cron", "Also between applicable hours (02:00-08:00 and 15:00-17:00)");
-                id(kwh_price_cents).publish_state(7);
+                ESP_LOGD(TAG, "Time is between applicable hours (02:00 to 08:00 and 15:00 to 17:00)");
+                id(kwh_price_cents).publish_state(${kwh_price_cents_night_rate});
               } else {
-                ESP_LOGD("kwh_price_cents_cron", "Outside applicable hours (02:00-08:00 and 15:00-17:00)");
-                id(kwh_price_cents).publish_state(11);
+                ESP_LOGD(TAG, "Time is outside applicable hours (02:00 to 08:00 and 15:00 to 17:00)");
+                id(kwh_price_cents).publish_state(${kwh_price_cents_normal_rate});
               }
             } else {
-              ESP_LOGD("kwh_price_cents_cron", "We are in the summer period (1 Μαΐου έως 31 Οκτωβρίου)");
+              ESP_LOGD(TAG, "We are in the summer period (May 1st to October 31st)");
 
               if (hour >= 23 || hour <= 7) {
-                ESP_LOGD("kwh_price_cents_cron", "Also between applicable hours (23:00-07:00)");
-                id(kwh_price_cents).publish_state(7);
+                ESP_LOGD(TAG, "Time is between applicable hours (23:00 to 07:00)");
+                id(kwh_price_cents).publish_state(${kwh_price_cents_night_rate});
               } else {
-                ESP_LOGD("kwh_price_cents_cron", "Outside applicable hours (23:00-07:00)");
-                id(kwh_price_cents).publish_state(11);
+                ESP_LOGD(TAG, "Time is outside applicable hours (23:00 to 07:00)");
+                id(kwh_price_cents).publish_state(${kwh_price_cents_normal_rate});
               }
             }
           }
