@@ -1,4 +1,4 @@
-.PHONY: mother vindriktning
+.PHONY: mother vindriktning blaster
 
 OTA_PASSWORD := $(shell cat secrets.yaml | sed -n 's/ota_password: //p')
 
@@ -16,6 +16,9 @@ plug-6e6387:
 
 vindriktning:
 	esphome run vindriktning.yaml --password $(OTA_PASSWORD) --device $@.lan --no-logs
+
+blaster:
+	esphome run $@.yaml --password $(OTA_PASSWORD) --device $@.lan --no-logs
 
 plugs: plug-6c5e9e plug-6e6387
 
