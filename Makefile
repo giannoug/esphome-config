@@ -2,6 +2,9 @@
 
 OTA_PASSWORD := $(shell cat secrets.yaml | sed -n 's/ota_password: //p')
 
+clean:
+	rm -rf .esphome
+
 mother:
 	esphome run mother.yaml --password $(OTA_PASSWORD) --device $@.lan --no-logs
 
