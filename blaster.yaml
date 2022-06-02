@@ -35,6 +35,7 @@ switch:
           code: [7827, -3864, 527, -442, 526, -433, 490, -440, 502, -442, 502, -983, 502, -457, 487, -443, 501, -457, 487, -997, 487, -997, 489, -984, 523, -958, 501, -458, 484, -984, 501, -998, 485, -998, 491, -454, 489, -456, 489, -442, 528, -970, 489, -995, 487, -983, 525, -419, 529, -416, 503, -982, 503, -995, 512, -958, 501, -457, 486, -456, 486, -457, 485, -1000, 484, -983, 499]
 
 remote_receiver:
+  id: ir_receiver
   pin:
     number: GPIO14
     inverted: true
@@ -44,3 +45,9 @@ remote_receiver:
 remote_transmitter:
   pin: GPIO4
   carrier_duty_percent: 50%
+
+climate:
+  - platform: climate_ir_lg
+    id: bedroom_ac
+    name: "Bedroom AC"
+    receiver_id: ir_receiver
