@@ -21,6 +21,7 @@ esp32_ble_tracker:
 sensor:
   - !include common/sensor/wifi-signal.yaml
   - !include common/sensor/uptime.yaml
+  - !include common/sensor/esp32_hall.yaml
   - platform: pvvx_mithermometer
     mac_address: !secret mother_room_1_mac
     temperature:
