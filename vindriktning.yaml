@@ -17,8 +17,10 @@ switch:
   - !include common/switch/restart.yaml
 
 uart:
-  rx_pin: GPIO5
+  rx_pin: GPIO14
   baud_rate: 9600
+
+i2c:
 
 sensor:
   - !include common/sensor/wifi-signal.yaml
@@ -32,3 +34,16 @@ sensor:
             window_size: 7
             send_every: 7
             send_first_at: 7
+  - platform: bmp280
+    temperature:
+      name: BMP280 temperature
+      oversampling: 16x
+    pressure:
+      name: Pressure
+    address: 0x76
+  - platform: htu21d
+    temperature:
+      name: Si7021 temperature
+    humidity:
+      name: Humidity
+    update_interval: 60s
