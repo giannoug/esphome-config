@@ -1,0 +1,57 @@
+substitutions:
+  device: reveille
+  name: Reveille
+
+esphome:
+  name: ${device}
+  name_add_mac_suffix: true
+  platform: ESP8266
+  board: esp8285
+
+<<: !include common/common.yaml
+
+text_sensor:
+  - !include common/text_sensor/version.yaml
+  - !include common/text_sensor/wifi-info.yaml
+
+light:
+  - platform: status_led
+    name: Blue LED
+    id: blue_led
+    pin:
+      number: GPIO02
+      inverted: true
+
+binary_sensor:
+  - platform: gpio
+    name: Button
+    id: button
+    pin:
+      number: GPIO04
+      mode: INPUT_PULLUP
+      inverted: true
+  - platform: gpio
+    name: Case power button
+    id: case_pwr_btn
+    pin:
+      number: GPIO10
+      mode: INPUT_PULLUP
+      inverted: true
+  - platform: gpio
+    name: Motherboard power LED
+    id: mobo_pwr_led
+    pin:
+      number: GPIO12
+      mode: INPUT_PULLUP
+      inverted: true
+
+sensor:
+  - !include common/sensor/wifi-signal.yaml
+  - !include common/sensor/uptime.yaml
+
+switch:
+  - !include common/switch/restart.yaml
+  - platform: gpio
+    name: Motherboard power button
+    id: mobo_pwr_btn
+    pin: GPIO05

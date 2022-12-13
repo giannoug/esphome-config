@@ -19,4 +19,9 @@ vindriktning:
 
 plugs: plug-6c5e9e plug-6e6387
 
-all: mother plugs vindriktning
+reveille-529eab:
+	esphome run reveille.yaml --password $(OTA_PASSWORD) --device $@.lan --no-logs
+
+reveilles: reveille-529eab
+
+all: mother plugs vindriktning reveilles
